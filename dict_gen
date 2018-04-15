@@ -1,0 +1,60 @@
+# -*- coding: utf-8 i-*-
+import os 
+#import pygame
+import pytesseract
+from PIL import Image, ImageFont, ImageDraw,ImageEnhance 
+import codecs
+dict_2={}
+with open("test.txt") as f:
+  j=0
+  line=""
+  for line_1 in f.readlines():
+      for s in line_1:
+        line=line+" "+s
+      
+      j=j+1
+      tran=str(line)
+      im = Image.new("RGB",(700, 30),(255,255,255))
+      dr = ImageDraw.Draw(im)
+      font = ImageFont.truetype(os.path.join("fonts", "msyh.ttf"), 15)
+      dr.text((5, 5), tran, font=font, fill="#000000")
+      im.save("word_"+str(j)+".png")  
+            #亮度增强  
+      enh_bri = ImageEnhance.Brightness(im)  
+      brightness = 1.5  
+      image_brightened = enh_bri.enhance(brightness)  
+#image_brightened.show()  
+  
+#色度增强  
+      enh_col = ImageEnhance.Color(im)  
+      color = 1.5  
+      image_colored = enh_col.enhance(color)  
+#image_colored.show()  
+      image_colored.save("r_co.png")
+  
+#对比度增强  
+      enh_con = ImageEnhance.Contrast(image_colored)  
+      contrast = 1.5
+      image_contrasted = enh_con.enhance(contrast)  
+      image_contrasted.show()
+      image_contrasted.save("word_"+str(j)+".png","PNG") 
+      img=Image.open("word_"+str(j)+".png")
+      text_1=pytesseract.image_to_string(img,lang='chi_sim')
+      t_s=str(text_1)
+      l_t=len(str(text_1))
+      text_2=""
+      for s_2 in t_s:
+        if s_2!=" ":
+          text_2=text_2+s_2
+      try:
+       for i in range(l_t):
+         if text_2[i]!=line_1[i]:
+           if text_2[i] not in dict_2.keys() and text_2[i]!="":
+             dict_2[text_2[i]]=line_1[i]
+           else:
+             if str(dict_2[text_2[i]]).contains(str(line_1[i]))==False:
+              dict_2[text_2[i]]=str(dict_2[text_2[i]])+" "+str(line_1[i])
+         #print(text_2[i]+" "+line_1[i])
+      except:
+        print("nothing")
+      print(dict_2)
