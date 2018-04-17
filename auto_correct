@@ -13,8 +13,6 @@ import pytesseract
 from PIL import Image
 import sys
 
-with open(path+"_res","a+") as f:
-  f.write(str(text_1))
 FILE_PATH = "freq_jieba.txt"
 PUNCTUATION_LIST = string.punctuation
 PUNCTUATION_LIST += "。，？：；｛｝［］‘“”《》／！％……（）"
@@ -32,6 +30,17 @@ def construct_dict( file_path ):
 	
 	return word_freq
 
+def correct_dict( file_path ):
+	
+	word_freq = {}
+	with open(file_path, "r",encoding='GBK') as f:
+		for line in f:
+			info = line.split()
+			word = info[0]
+			frequency = info[1]
+			word_freq[word] = frequency
+	
+	return word_freq
 
 def load_cn_words_dict( file_path ):
 	cn_words_dict = ""
@@ -80,16 +89,26 @@ def auto_correct( error_phrase ):
 	word=error_phrase
 	for i in range(len(error_phrase)):
 		
-		correct_phrase = phrase
+		correct_phrase = error_phrase
 		# check if item is a punctuation
-		if s in c_dict.keys():
+		if error_phrase[i] in c_dict.keys():
 			# check if the phrase in our dict, if not then it is a misspelled phrase
-			for right_word in c.dict[error_phrase[i]]:
-				word[i]=right_word
-				if word not in phrase_freq.keys():
+			l_e=list(error_phrase)
+			new_phrase=""
+			#print(c_dict[error_phrase[i]])
+			for right_word in c_dict[error_phrase[i]]:
+			        #print(right_word)
+				l_e[i]=right_word
+				#print(right_word)
+				for w in l_e:
+				  new_phrase=new_phrase+w
+				#print(new_phrase)
+				if new_phrase not in phrase_freq.keys():
 					word=error_phrase
 				else:
-					 word=word
+					 word=new_phrase
+					 #print(new_phrase)
+					 break
 					#w_word=str(phrase)
 	
 		word=word
@@ -110,178 +129,34 @@ def auto_correct_sentence( error_sentence, verbose=True):
 		if phrase not in PUNCTUATION_LIST:
 			# check if the phrase in our dict, if not then it is a misspelled phrase
 			if phrase not in phrase_freq.keys():
-				correct_phrase = auto_correct(phrase.encode("utf-8"))
-				w_word=str(phrase)
+				correct_phrase = auto_correct(phrase)
+				correct_phrase=str(correct_phrase)
 				if verbose :
 					print(phrase)
 					#w_word=str(phrase)
 	
 		correct_sentence += correct_phrase
 
-	return w_word
+	return correct_sentence
 
 
 
 phrase_freq = construct_dict( FILE_PATH )
-c_dict=construct_dict( "dict_1.txt" )
+c_dict=correct_dict( "dict_1.txt" )
+print(c_dict)
 
 def main():
      path=sys.argv[1]
      img=Image.open(path)
      text_1=pytesseract.image_to_string(img,lang='chi_sim')
-     err_sent_1=""
-     for s in text_1:
-       err_sent_1=err_sent+s
-       if s=="，" or s=="。" or s=="？" or s=="," or s=="." or s=="?" or s=="!":
-	                            correct_sent = auto_correct_sentence( err_sent_1)
-			# !/usr/bin/python
-# -*- coding:utf-8 -*-
-__author__ = "zpgao"
-
-import sys
-import pinyin
-import jieba
-import string
-import re
-
-import imp
-import pytesseract
-from PIL import Image
-import sys
-
-with open(path+"_res","a+") as f:
-  f.write(str(text_1))
-FILE_PATH = "freq_jieba.txt"
-PUNCTUATION_LIST = string.punctuation
-PUNCTUATION_LIST += "。，？：；｛｝［］‘“”《》／！％……（）"
-
-
-def construct_dict( file_path ):
-	
-	word_freq = {}
-	with open(file_path, "r",encoding='UTF-8') as f:
-		for line in f:
-			info = line.split()
-			word = info[0]
-			frequency = info[1]
-			word_freq[word] = frequency
-	
-	return word_freq
-
-
-def load_cn_words_dict( file_path ):
-	cn_words_dict = ""
-	with open(file_path, "r",encoding='UTF-8') as f:
-		for word in f:
-			cn_words_dict += word.strip().decode("utf-8")
-	return cn_words_dict
-
-
-def edits1(phrase, cn_words_dict):
-	"All edits that are one edit away from `phrase`."
-	phrase = phrase.decode("utf-8")
-	splits     = [(phrase[:i], phrase[i:])  for i in range(len(phrase) + 1)]
-	deletes    = [L + R[1:]                 for L, R in splits if R]
-	transposes = [L + R[1] + R[0] + R[2:]   for L, R in splits if len(R)>1]
-	replaces   = [L + c + R[1:]             for L, R in splits if R for c in cn_words_dict]
-	inserts    = [L + c + R                 for L, R in splits for c in cn_words_dict]
-	return set(deletes + transposes + replaces + inserts)
-
-def known(phrases): return set(phrase for phrase in phrases if phrase.encode("utf-8") in phrase_freq)
-
-
-def get_candidates( error_phrase ):
-	
-	candidates_1st_order = []
-	candidates_2nd_order = []
-	candidates_3nd_order = []
-	
-	error_pinyin = pinyin.get(error_phrase, format="strip", delimiter="/").encode("utf-8")
-	cn_words_dict = load_cn_words_dict( "./cn_dict.txt" )
-	candidate_phrases = list( known(edits1(error_phrase, cn_words_dict)) )
-	
-	for candidate_phrase in candidate_phrases:
-		candidate_pinyin = pinyin.get(candidate_phrase, format="strip", delimiter="/").encode("utf-8")
-		if candidate_pinyin == error_pinyin:
-			candidates_1st_order.append(candidate_phrase)
-		elif candidate_pinyin.split("/")[0] == error_pinyin.split("/")[0]:
-			candidates_2nd_order.append(candidate_phrase)
-		else:
-			candidates_3nd_order.append(candidate_phrase)
-	
-	return candidates_1st_order, candidates_2nd_order, candidates_3nd_order
-
-
-def auto_correct( error_phrase ):
-	word=error_phrase
-	for i in range(len(error_phrase)):
-		
-		correct_phrase = phrase
-		# check if item is a punctuation
-		if s in c_dict.keys():
-			# check if the phrase in our dict, if not then it is a misspelled phrase
-			for right_word in c.dict[error_phrase[i]]:
-				word[i]=right_word
-				if word not in phrase_freq.keys():
-					word=error_phrase
-				else:
-					 word=word
-					#w_word=str(phrase)
-	
-		word=word
-
-	return word
+     err_sent_1="不得有意做庞假陈述,"
+     correct_sent = auto_correct_sentence( err_sent_1)
+     print(correct_sent)
+    # for s in text_1:
+       #err_sent_1=err_sent+s
+       #if s=="，" or s=="。" or s=="？" or s=="," or s=="." or s=="?" or s=="!":
+	                           # correct_sent = auto_correct_sentence( err_sent_1)
 				  
-
-def auto_correct_sentence( error_sentence, verbose=True):
-	jieba_cut = jieba.cut( error_sentence, cut_all=False)
-	seg_list = "\t".join(jieba_cut).split("\t")
-	
-	correct_sentence = ""
-	w_word=""
-	for phrase in seg_list:
-		
-		correct_phrase = phrase
-		# check if item is a punctuation
-		if phrase not in PUNCTUATION_LIST:
-			# check if the phrase in our dict, if not then it is a misspelled phrase
-			if phrase not in phrase_freq.keys():
-				correct_phrase = auto_correct(phrase.encode("utf-8"))
-				w_word=str(phrase)
-				if verbose :
-					print(phrase)
-					#w_word=str(phrase)
-	
-		correct_sentence += correct_phrase
-
-	return w_word
-
-
-
-phrase_freq = construct_dict( FILE_PATH )
-c_dict=construct_dict( "dict_1.txt" )
-
-def main():
-     path=sys.argv[1]
-     img=Image.open(path)
-     text_1=pytesseract.image_to_string(img,lang='chi_sim')
-     err_sent_1=""
-     for s in text_1:
-       err_sent_1=err_sent+s
-       if s=="，" or s=="。" or s=="？" or s=="," or s=="." or s=="?" or s=="!":
-	                            correct_sent = auto_correct_sentence( err_sent_1 )
-			         
-			
-	                            print ("original sentence:" + err_sent_1 + "\n==>\n" + "corrected sentence:" + correct_sent)
-                                    #err_sent_1=""
-if __name__=="__main__":
-	imp.reload(sys)
-	#sys.setdefaultencoding('utf-8')
-	main()
-
-
-	                            print ("original sentence:" + err_sent_1 + "\n==>\n" + "corrected sentence:" + correct_sent)
-                                    #err_sent_1=""
 if __name__=="__main__":
 	imp.reload(sys)
 	#sys.setdefaultencoding('utf-8')
