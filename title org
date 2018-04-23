@@ -1,0 +1,16 @@
+from PIL import Image
+import pytesseract
+from PIL import Image
+import sys
+path=sys.argv[1]
+im = Image.open(path)
+img_size = im.size
+
+print(img_size[0])
+region = im.crop((0, 0, img_size[0], 100))
+region.show()
+#img=Image.open(path)
+text_1=pytesseract.image_to_string(region,lang='chi_sim')
+print(text_1)
+with open(path+"_res","a+") as f:
+  f.write(str(text_1))
